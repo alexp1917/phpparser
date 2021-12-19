@@ -1,0 +1,74 @@
+plugins {
+    id 'java-library'
+    // id 'maven-publish'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+sourceSets {
+    java_cup {
+        java.srcDirs = ['src/java_cup']
+    }
+
+    JFlex {
+        java.srcDirs = ['src/JFlex']
+    }
+
+    project {
+        java.srcDirs = ['src/project']
+    }
+
+    parser {
+        java.srcDirs = ['build/generated/sources/parser/main/java']
+    }
+
+    spec {
+        resources.srcDirs = ['src/spec']
+    }
+}
+
+tasks.register('parser-source', JavaExec) {
+    it.group 'build'
+    it.inputs.files(sourceSets.java_cup.output)
+    it.inputs.files(sourceSets.JFlex.output)
+    it.outputs.files(sourceSets.parser.java)
+
+    it.mainClass.set('java_cup.Main')
+    it.classpath(sourceSets.java_cup.output, sourceSets.JFlex.output)
+    it.args(
+            "-package",
+            "phpparser",
+            "-parser",
+            "PhpParser",
+            "-symbols",
+            "PhpSymbols",
+            "-nonterms",
+            "-expect",
+            "1",
+            sourceSets.spec.resources.srcDirs.stream()
+                    .findAny().orElseThrow().toPath()
+                    .resolve('php.cup')
+    )
+
+    it.doLast {
+        ant.echo(message: "hello")
+        ant.move(file: "PhpSymbols.java",
+                 toDir: 'build/generated/sources/parser/main/java/phpparser')
+        ant.move(file: "PhpParser.java",
+                 toDir: 'build/generated/sources/parser/main/java/phpparser')
+    }
+}
+
+tasks.register('mytask') {
+    doLast {
+        sourceSets.forEach(t -> println t.name)
+    }
+}
+
+dependencies {
+    jFlexImplementation sourceSets.java_cup.output
+}

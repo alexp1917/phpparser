@@ -8,3 +8,8 @@
 # IDE files
 *.iml
 .idea
+
+doc/
+
+.gradle
+build
