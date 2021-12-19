@@ -16,6 +16,7 @@ sourceSets {
 
     JFlex {
         java.srcDirs = ['src/JFlex']
+        resources.srcDirs = ['src/JFlex']
     }
 
     project {
@@ -26,22 +27,42 @@ sourceSets {
         java.srcDirs = ['build/generated/sources/parser/main/java']
     }
 
+    lexer {
+        java.srcDirs = ['build/generated/sources/lexer/main/java']
+    }
+
     spec {
         resources.srcDirs = ['src/spec']
     }
+}
+
+tasks.register('lexer-source', JavaExec) {
+    it.group 'build'
+    it.mainClass.set('JFlex.Main')
+    it.classpath(sourceSets.java_cup.output, sourceSets.JFlex.output,
+            sourceSets.parser.output)
+    it.args(sourceSets.spec.resources.srcDirs.stream()
+            .findAny().orElseThrow().toPath()
+            .resolve('php.jflex'),
+            '-d',
+            sourceSets.lexer.java.srcDirs.stream()
+                    .findAny().orElseThrow())
 }
 
 tasks.register('parser-source', JavaExec) {
     it.group 'build'
     it.inputs.files(sourceSets.java_cup.output)
     it.inputs.files(sourceSets.JFlex.output)
+    // it.inputs.files(sourceSets.lexer.output)
     it.outputs.files(sourceSets.parser.java)
 
     it.mainClass.set('java_cup.Main')
-    it.classpath(sourceSets.java_cup.output, sourceSets.JFlex.output)
+    it.classpath(sourceSets.java_cup.output,
+            sourceSets.JFlex.output/*,
+            sourceSets.lexer.output*/)
     it.args(
-            "-package",
-            "phpparser",
+            // "-package",
+            // "phpparser",
             "-parser",
             "PhpParser",
             "-symbols",
@@ -57,11 +78,16 @@ tasks.register('parser-source', JavaExec) {
     it.doLast {
         ant.echo(message: "hello")
         ant.move(file: "PhpSymbols.java",
-                 toDir: 'build/generated/sources/parser/main/java/phpparser')
+                 toDir: 'build/generated/sources/parser/main/java')
         ant.move(file: "PhpParser.java",
-                 toDir: 'build/generated/sources/parser/main/java/phpparser')
+                 toDir: 'build/generated/sources/parser/main/java')
     }
+
+    // it.finalizedBy('parserClasses')
 }
+
+tasks.lexerClasses.dependsOn('lexer-source');
+tasks.parserClasses.dependsOn('parser-source');
 
 tasks.register('mytask') {
     doLast {
@@ -71,4 +97,20 @@ tasks.register('mytask') {
 
 dependencies {
     jFlexImplementation sourceSets.java_cup.output
+    parserImplementation sourceSets.java_cup.output
+    parserImplementation sourceSets.project.output
+    lexerImplementation sourceSets.java_cup.output
+    lexerImplementation sourceSets.project.output
+    lexerImplementation sourceSets.parser.output
+    implementation sourceSets.spec.output
+    implementation sourceSets.parser.output
+    implementation sourceSets.JFlex.output
+    implementation sourceSets.lexer.output
 }
+
+configurations.implementation.extendsFrom configurations.jFlexImplementation
+configurations.implementation.extendsFrom configurations.java_cupImplementation
+configurations.implementation.extendsFrom configurations.parserImplementation
+configurations.lexerImplementation.extendsFrom configurations
+        .parserImplementation
+configurations.implementation.extendsFrom configurations.lexerImplementation
